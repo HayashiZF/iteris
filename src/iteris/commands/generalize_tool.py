@@ -44,6 +44,7 @@ from iteris.gitops import ensure_gitignore
 from iteris.generalize import resolve_source_result
 from iteris.generalize_analyze import build_analyze_prompt, validate_analysis_file
 from iteris.project import now_iso, now_stamp, require_project, session_slug, slugify
+from iteris.agents.prompt_assets import append_runtime_context, asset_instructions
 
 app = typer.Typer(help="Generalization tooling (analysis of verified results).")
 
@@ -149,6 +150,27 @@ def analyze(
         validate_command=validate_command,
         family_digest=_family_pool_digest(root),
     )
+    curated = asset_instructions(root, "generalization-analyst")
+    if curated:
+        prompt_text = append_runtime_context(
+            curated,
+            title="Runtime Request Context",
+            sections={
+                "Generalization Analysis Request": json.dumps(
+                    {
+                        "project_path": str(root),
+                        "source_result": source_result_rel,
+                        "directions_requested": directions,
+                        "analysis_json": ANALYSIS_JSON,
+                        "directions_dir": DIRECTIONS_DIR,
+                        "validate_command": validate_command,
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                ),
+                "Reference Prompt": prompt_text,
+            },
+        )
     prompt_path = root / ".iteris" / "generalize_analyze_prompt.txt"
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text(prompt_text + "\n", encoding="utf-8")

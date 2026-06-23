@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from iteris.agents.prompt_assets import append_runtime_context, asset_instructions
 from iteris.agents.runtime import create_agent_run
 
 
@@ -13,7 +14,7 @@ def build_explore_prompt(request: dict[str, Any]) -> str:
     focus = request.get("focus") or "the active project frontier"
     recommended_artifacts = json.dumps(request.get("recommended_artifacts") or {}, indent=2, ensure_ascii=False)
     iteris_cli = request.get("iteris_cli") or "iteris"
-    return f"""You are the Iteris Explore Subagent.
+    default_prompt = f"""You are the Iteris Explore Subagent.
 
 You are a background tool invoked by the main goal agent. The main agent may
 continue working in parallel, so do not wait for interactive input and do not
@@ -148,6 +149,31 @@ If you find that the current terminal artifact is only a partial solution, say
 so explicitly and propose the next TASK_POOL entries needed to reach
 goal-success verification.
 """
+    root = Path(str(request["project_path"]))
+    curated = asset_instructions(root, "math-explorer")
+    if not curated:
+        return default_prompt
+    return append_runtime_context(
+        curated,
+        title="Runtime Request Context",
+        sections={
+            "Focus": focus,
+            "Iteris CLI Fallback": f"If `iteris` is not on PATH, use `{iteris_cli}`.",
+            "Artifact Workspace": json.dumps(
+                {
+                    "artifact_workspace": request["artifact_workspace"],
+                    "artifact_manifest": request["artifact_manifest"],
+                    "artifact_index": request["artifact_index"],
+                    "recommended_artifacts": request.get("recommended_artifacts") or {},
+                    "run_id": request["run_id"],
+                    "output_markdown": request["output_markdown"],
+                    "output_json": request["output_json"],
+                },
+                indent=2,
+                ensure_ascii=False,
+            ),
+        },
+    )
 
 
 def launch_explore_agent(

@@ -11,6 +11,8 @@ import typer
 from iteris import log
 from iteris.agents.execute import MODE_GUIDANCE, launch_execute_agent
 from iteris.agents.explore import launch_explore_agent
+from iteris.agents.frontier_curator import launch_frontier_curator_agent
+from iteris.agents.reporter import launch_reporter_agent
 from iteris.agents.runtime import agent_run_summary, latest_agent_run, list_agent_runs, tail_text
 from iteris.events import record_event
 from iteris.project import read_json, require_project
@@ -33,6 +35,54 @@ def explore(
 ) -> None:
     root = require_project(project_path)
     result = launch_explore_agent(
+        root,
+        focus=focus,
+        detached=detached,
+        dry_run=dry_run,
+        executor=executor,
+        model=model,
+        reasoning_effort=reasoning_effort,
+    )
+    _print_result(result, json_output=json_output)
+
+
+@app.command("curate")
+def curate(
+    project_path: str = typer.Argument(".", help="Iteris project path."),
+    focus: str = typer.Option("Curate the active frontier and blocker patterns.", "--focus", "-f"),
+    detached: bool = typer.Option(False, "--detach/--foreground", help="Run as a background worker."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Write request and prompt without launching the executor."),
+    executor: str | None = typer.Option(None, "--executor", "-e", help="Agent CLI: codex or claude. Defaults to $ITERIS_EXECUTOR, then codex."),
+    model: str | None = typer.Option(None, "--model"),
+    reasoning_effort: str | None = typer.Option(None, "--reasoning-effort"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    root = require_project(project_path)
+    result = launch_frontier_curator_agent(
+        root,
+        focus=focus,
+        detached=detached,
+        dry_run=dry_run,
+        executor=executor,
+        model=model,
+        reasoning_effort=reasoning_effort,
+    )
+    _print_result(result, json_output=json_output)
+
+
+@app.command("report")
+def report(
+    project_path: str = typer.Argument(".", help="Iteris project path."),
+    focus: str = typer.Option("Summarize current project state into an auditable report.", "--focus", "-f"),
+    detached: bool = typer.Option(False, "--detach/--foreground", help="Run as a background worker."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Write request and prompt without launching the executor."),
+    executor: str | None = typer.Option(None, "--executor", "-e", help="Agent CLI: codex or claude. Defaults to $ITERIS_EXECUTOR, then codex."),
+    model: str | None = typer.Option(None, "--model"),
+    reasoning_effort: str | None = typer.Option(None, "--reasoning-effort"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    root = require_project(project_path)
+    result = launch_reporter_agent(
         root,
         focus=focus,
         detached=detached,

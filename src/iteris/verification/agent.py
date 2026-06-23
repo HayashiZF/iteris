@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from iteris.agents.prompt_assets import append_runtime_context, asset_instructions
 from iteris.codex_logs import (
     CODEX_EVENTS_FILENAME,
     CODEX_LOG_MANIFEST_FILENAME,
@@ -213,6 +214,16 @@ def build_codex_command(
 
 
 def build_agent_prompt(*, request_id: str, request_path: Path, output_path: Path) -> str:
+    root = request_path.parents[3]
+    curated = asset_instructions(root, "verifier")
+    if curated:
+        return append_runtime_context(
+            curated,
+            title="Runtime Request Context",
+            sections={
+                "Verification Request": f"request_id: {request_id}\nrequest_path: `{request_path}`\noutput_path: `{output_path}`",
+            },
+        )
     return f"""You are the Iteris Verification Agent.
 
 Read the verification request at `{request_path}` and verify it inside this

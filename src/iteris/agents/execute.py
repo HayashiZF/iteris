@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from iteris.agents.prompt_assets import append_runtime_context, asset_instructions
 from iteris.agents.runtime import create_agent_run
 
 
@@ -54,7 +55,7 @@ def build_execute_prompt(request: dict[str, Any], task: dict[str, Any]) -> str:
     task_text = json.dumps(task, indent=2, ensure_ascii=False)
     recommended_artifacts = json.dumps(request.get("recommended_artifacts") or {}, indent=2, ensure_ascii=False)
     iteris_cli = request.get("iteris_cli") or "iteris"
-    return f"""You are the Iteris Execute Subagent.
+    default_prompt = f"""You are the Iteris Execute Subagent.
 
 You are a background execution tool invoked by the main goal agent. The main
 agent may continue working in parallel, so keep shared-file edits minimal and
@@ -183,6 +184,32 @@ The JSON must have this shape:
 A good result is narrow, auditable, and ready for the main agent to verify or
 schedule into the next TASK_POOL frontier.
 """
+    root = Path(str(request["project_path"]))
+    curated = asset_instructions(root, "executor")
+    if not curated:
+        return default_prompt
+    return append_runtime_context(
+        curated,
+        title="Runtime Request Context",
+        sections={
+            "Execution Mode": f"{mode}\n\n{guidance}{mode_workflow}",
+            "Task": json.dumps(task, indent=2, ensure_ascii=False),
+            "Artifact Workspace": json.dumps(
+                {
+                    "artifact_workspace": request["artifact_workspace"],
+                    "artifact_manifest": request["artifact_manifest"],
+                    "artifact_index": request["artifact_index"],
+                    "recommended_artifacts": request.get("recommended_artifacts") or {},
+                    "run_id": request["run_id"],
+                    "output_markdown": request["output_markdown"],
+                    "output_json": request["output_json"],
+                    "iteris_cli": iteris_cli,
+                },
+                indent=2,
+                ensure_ascii=False,
+            ),
+        },
+    )
 
 
 def launch_execute_agent(
