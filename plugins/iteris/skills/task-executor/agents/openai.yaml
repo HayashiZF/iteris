@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iteris Task Executor"
+  short_description: "Advance one Iteris task with artifact and verification discipline."
+  default_prompt: "Use $task-executor to advance one Iteris task and update the artifact manifest with the result."

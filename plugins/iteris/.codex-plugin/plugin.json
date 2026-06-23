@@ -1,0 +1,25 @@
+{
+  "name": "iteris",
+  "version": "0.1.0",
+  "description": "Codex plugin for the Iteris research-loop runtime.",
+  "author": {
+    "name": "Frenzymath / AI4Math"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Iteris",
+    "shortDescription": "Portable research-loop skills for Iteris-style repos.",
+    "longDescription": "Iteris distills the Iteris runtime into Codex skills, subagents, and Python helper scripts that operate directly on the repo-local workflow state.",
+    "developerName": "Frenzymath / AI4Math",
+    "category": "Productivity",
+    "capabilities": [
+      "Write",
+      "Interactive"
+    ],
+    "defaultPrompt": [
+      "Run the Iteris research loop on this repo using the portable plugin workflow.",
+      "Explore the active frontier and propose non-obvious next routes.",
+      "Verify a fact, proof, or terminal artifact against the Iteris contract."
+    ]
+  }
+}

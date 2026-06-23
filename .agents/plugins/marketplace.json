@@ -1,0 +1,20 @@
+{
+  "name": "iteris-local",
+  "interface": {
+    "displayName": "Iteris Local"
+  },
+  "plugins": [
+    {
+      "name": "iteris",
+      "source": {
+        "source": "local",
+        "path": "./plugins/iteris"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

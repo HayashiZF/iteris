@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iteris Claim Verifier"
+  short_description: "Verify Iteris facts, proofs, assemblies, and principled stops."
+  default_prompt: "Use $claim-verifier to verify this claim against the Iteris evidence bundle and write a result that matches the portable plugin schema."

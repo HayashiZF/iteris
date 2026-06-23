@@ -36,3 +36,28 @@ def search_arxiv_theorems(query: str, num_results: int = 10, timeout_seconds: in
         )
     return {"query": query, "count": len(results), "results": results, "endpoint": THEOREM_SEARCH_URL}
 
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    import sys
+    
+    # Reconfigure stdout/stderr to prevent encoding errors on Windows
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+        
+    parser = argparse.ArgumentParser(description="Search the LeanSearch theorem database.")
+    parser.add_argument("--query", "-q", required=True, help="Mathematical statement or search query.")
+    parser.add_argument("--num-results", "-n", type=int, default=10, help="Maximum number of results.")
+    parser.add_argument("--timeout", "-t", type=int, default=30, help="Timeout in seconds.")
+    
+    args = parser.parse_args()
+    try:
+        res = search_arxiv_theorems(query=args.query, num_results=args.num_results, timeout_seconds=args.timeout)
+        print(json.dumps(res, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+

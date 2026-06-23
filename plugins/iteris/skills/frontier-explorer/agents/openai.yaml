@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iteris Frontier Explorer"
+  short_description: "Explore blocked routes and propose next research frontiers."
+  default_prompt: "Use $frontier-explorer to inspect the active frontier and propose non-obvious next routes using the portable Iteris plugin contract."

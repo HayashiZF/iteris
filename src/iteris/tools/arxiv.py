@@ -11,7 +11,37 @@ from typing import Any
 
 import requests
 
-from iteris.project import now_iso, slugify, write_json
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+import tempfile
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def slugify(text: str, limit: int = 80) -> str:
+    out = re.sub(r"[^A-Za-z0-9._-]+", "-", text.strip().lower())
+    out = re.sub(r"-+", "-", out).strip("-._")
+    return (out or "item")[:limit]
+
+
+def write_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(data)
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def normalize_arxiv_id(raw: str) -> str:
@@ -213,3 +243,33 @@ def _looks_like_html(content: bytes) -> bool:
 
 def _looks_like_latex(text: str) -> bool:
     return "\\documentclass" in text or "\\begin{" in text or "\\newcommand" in text
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+    
+    # Reconfigure stdout/stderr to prevent encoding errors on Windows
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+        
+    parser = argparse.ArgumentParser(description="Fetch an arXiv reference with LaTeX source/PDF text fallback.")
+    parser.add_argument("--arxiv-id", required=True, help="arXiv ID or URL to fetch.")
+    parser.add_argument("--project-root", "--dir", default=".", help="Root directory of the project (default: current directory).")
+    parser.add_argument("--timeout", type=int, default=60, help="Timeout in seconds.")
+    parser.add_argument("--include-pdf", action="store_true", help="Include PDF text extraction even if LaTeX source is fetched.")
+    
+    args = parser.parse_args()
+    try:
+        manifest = fetch_arxiv_reference(
+            project_root=Path(args.project_root),
+            arxiv_id=args.arxiv_id,
+            timeout_seconds=args.timeout,
+            include_pdf=args.include_pdf
+        )
+        print(json.dumps(manifest, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
