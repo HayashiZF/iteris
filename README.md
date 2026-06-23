@@ -31,15 +31,25 @@ This repo is a distilled version of the original Iteris project, consisting of c
 
 To install locally using a one-liner (downloads `plugins/`, `.agents/`, and `.codex/` to the current directory):
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash
-```
+* **Linux/macOS:**
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash
+  ```
+* **Windows (PowerShell):**
+  ```powershell
+  curl.exe -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | sh
+  ```
 
 To install globally (downloads/merges `.codex/` to `~/` and others to the current directory):
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash -s -- -global
-```
+* **Linux/macOS:**
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash -s -- -global
+  ```
+* **Windows (PowerShell):**
+  ```powershell
+  curl.exe -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | sh -s -- -global
+  ```
 
 ## Requirements
 

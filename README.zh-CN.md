@@ -28,15 +28,25 @@ Iteris 是一个面向研究工作的 goal-driven agent workspace toolkit。它�
 
 使用一键命令进行本地安装（将 `plugins/`、`.agents/` 和 `.codex/` 下载到当前目录）：
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash
-```
+* **Linux/macOS:**
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash
+  ```
+* **Windows (PowerShell):**
+  ```powershell
+  curl.exe -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | sh
+  ```
 
 使用一键命令进行全局安装（下载并合并 `.codex/` 到 `~/`，其他目录仍下载到当前目录）：
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash -s -- -global
-```
+* **Linux/macOS:**
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | bash -s -- -global
+  ```
+* **Windows (PowerShell):**
+  ```powershell
+  curl.exe -fsSL https://raw.githubusercontent.com/HayashiZF/iteris/plugin-codex/install.sh | sh -s -- -global
+  ```
 
 ## 环境要求
 
