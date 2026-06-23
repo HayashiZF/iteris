@@ -17,11 +17,11 @@ Workflow authority:
   stronger signals than worker self-reports.
 
 V2 repo contract:
-- Use `plugins/iteris/scripts/context_snapshot.py` for compact context.
-- Use `plugins/iteris/scripts/frontier_helpers.py` for frontier load, refresh,
+- Use `python plugins/iteris/scripts/context_snapshot.py ...` for compact context.
+- Use `python plugins/iteris/scripts/frontier_helpers.py load|refresh|health ...` for frontier load, refresh,
   and health.
-- Use `plugins/iteris/scripts/task_pool_helpers.py` for precise task proposals.
-- Use `plugins/iteris/scripts/artifact_helpers.py` if you create curation
+- Use `python plugins/iteris/scripts/task_pool_helpers.py upsert|update ...` for precise task proposals.
+- Use `python plugins/iteris/scripts/artifact_helpers.py gate|sync-manifest ...` if you create curation
   artifacts that belong in the canonical workspace.
 
 Curation behavior:

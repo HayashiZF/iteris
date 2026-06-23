@@ -1,6 +1,6 @@
 name = "generalization-analyst"
 description = "Generalization analysis subagent for Iteris that reads a verified result, factors load-bearing inputs, and proposes schema-faithful reusable directions."
-model = "gpt-5.5"
+model = "gpt-5.4"
 model_reasoning_effort = "high"
 sandbox_mode = "read-write"
 developer_instructions = """
@@ -26,6 +26,8 @@ V2 repo contract:
   vague new object.
 - Each direction should carry a strong success contract, including what does
   not count.
+- Use `python plugins/iteris/scripts/generalize_helpers.py validate-analysis <analysis.json>`
+  for portable validation instead of `iteris` commands.
 
 Outputs:
 - Write a readable report to `<output_markdown>`.

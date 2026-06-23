@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import json
 from pathlib import Path
 from typing import Any
 
@@ -53,3 +55,51 @@ def sync_manifest(
     status: str,
 ) -> None:
     update_manifest_from_agent_output(Path(project_root), request, output, status=status)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_create = sub.add_parser("create-workspace")
+    p_create.add_argument("project_root")
+    p_create.add_argument("--run-id", required=True)
+    p_create.add_argument("--role")
+    p_create.add_argument("--mode")
+    p_create.add_argument("--task-id")
+    p_create.add_argument("--focus")
+    p_create.add_argument("--agent-run-dir", required=True)
+
+    p_gate = sub.add_parser("gate")
+    p_gate.add_argument("project_root")
+
+    p_sync = sub.add_parser("sync-manifest")
+    p_sync.add_argument("project_root")
+    p_sync.add_argument("--request-json", required=True)
+    p_sync.add_argument("--output-json")
+    p_sync.add_argument("--status", required=True)
+
+    args = parser.parse_args(argv)
+    if args.cmd == "create-workspace":
+        payload = create_workspace(
+            args.project_root,
+            run_id=args.run_id,
+            role=args.role,
+            mode=args.mode,
+            task_id=args.task_id,
+            focus=args.focus,
+            agent_run_dir=args.agent_run_dir,
+        )
+    elif args.cmd == "gate":
+        payload = gate(args.project_root)
+    else:
+        request = json.loads(Path(args.request_json).read_text(encoding="utf-8"))
+        output = json.loads(Path(args.output_json).read_text(encoding="utf-8")) if args.output_json else None
+        sync_manifest(args.project_root, request, output, status=args.status)
+        payload = {"ok": True}
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

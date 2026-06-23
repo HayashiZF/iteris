@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
 try:
@@ -33,3 +35,16 @@ def build_workspace_contract(project_root: str | Path) -> dict[str, str]:
         "verification_requests_dir": str(root / "verification" / "requests"),
         "verification_results_dir": str(root / "verification" / "results"),
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) != 1:
+        print("usage: python plugins/iteris/scripts/workspace_contract.py <project_root>", file=sys.stderr)
+        return 2
+    print(json.dumps(build_workspace_contract(args[0]), indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

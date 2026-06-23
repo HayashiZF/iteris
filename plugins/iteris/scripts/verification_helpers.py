@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import json
 from pathlib import Path
 from typing import Any
 
@@ -79,3 +81,67 @@ def normalize_agent_result(
         run_dir=Path(run_dir),
         log_path=Path(log_path),
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_struct = sub.add_parser("structural")
+    p_struct.add_argument("project_root")
+    p_struct.add_argument("--mode", required=True)
+    p_struct.add_argument("--claim", required=True)
+    p_struct.add_argument("--artifact", action="append", default=[])
+    p_struct.add_argument("--fact-id", action="append", default=[])
+    p_struct.add_argument("--target-artifact")
+
+    p_panel = sub.add_parser("panel")
+    p_panel.add_argument("project_root")
+    p_panel.add_argument("--mode", required=True)
+    p_panel.add_argument("--claim", required=True)
+    p_panel.add_argument("--artifact", action="append", default=[])
+    p_panel.add_argument("--fact-id", action="append", default=[])
+    p_panel.add_argument("--target-artifact")
+    p_panel.add_argument("--runs", type=int, default=2)
+    p_panel.add_argument("--executor")
+
+    p_norm = sub.add_parser("normalize-agent")
+    p_norm.add_argument("--request-json", required=True)
+    p_norm.add_argument("--payload-json", required=True)
+    p_norm.add_argument("--run-dir", required=True)
+    p_norm.add_argument("--log-path", required=True)
+
+    args = parser.parse_args(argv)
+    if args.cmd == "structural":
+        payload = structural_verify(
+            args.project_root,
+            mode=args.mode,
+            claim=args.claim,
+            artifacts=args.artifact,
+            fact_ids=args.fact_id,
+            target_artifact=args.target_artifact,
+        )
+    elif args.cmd == "panel":
+        payload = panel_verify(
+            args.project_root,
+            mode=args.mode,
+            claim=args.claim,
+            artifacts=args.artifact,
+            fact_ids=args.fact_id,
+            target_artifact=args.target_artifact,
+            runs=args.runs,
+            executor=args.executor,
+        )
+    else:
+        payload = normalize_agent_result(
+            request=json.loads(Path(args.request_json).read_text(encoding="utf-8")),
+            payload=json.loads(Path(args.payload_json).read_text(encoding="utf-8")),
+            run_dir=args.run_dir,
+            log_path=args.log_path,
+        )
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

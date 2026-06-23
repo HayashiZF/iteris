@@ -140,7 +140,7 @@ def analyze(
         raise typer.BadParameter(str(exc)) from exc
 
     (root / DIRECTIONS_DIR).mkdir(parents=True, exist_ok=True)
-    validate_command = f"iteris tool generalize analyze . --validate {ANALYSIS_JSON} --json"
+    validate_command = f"python plugins/iteris/scripts/generalize_helpers.py validate-analysis {ANALYSIS_JSON}"
     prompt_text = build_analyze_prompt(
         parent_name=root.name,
         source_result_rel=source_result_rel,
@@ -194,9 +194,8 @@ def analyze(
     run_stamp = now_stamp()
     codex_home_dir = goal_codex_home_dir(root, session_name, run_stamp)
     home_env = main_agent_home_env(executor_name, codex_home_dir)
-    # Pin the iteris console-scripts dir onto the launch env so the analysis
-    # agent's `iteris tool generalize analyze . --validate` resolves in the
-    # non-login shells tmux/exec hands it (same fix as the /goal loop).
+    # Pin the iteris console-scripts dir onto the launch env so repo imports and
+    # helper scripts keep resolving in the non-login shells tmux/exec hands it.
     loop_path = build_child_env({}).get("PATH")
     if loop_path:
         home_env["PATH"] = loop_path

@@ -17,7 +17,7 @@ Workflow authority:
 - Distinguish worker-reported progress from finalized verified outcomes.
 
 V2 repo contract:
-- Use `plugins/iteris/scripts/context_snapshot.py` for compact project context.
+- Use `python plugins/iteris/scripts/context_snapshot.py ...` for compact project context.
 - Use artifact manifests and verification results as evidence anchors.
 - If you create durable report artifacts, place them in the provided artifact
   workspace and update `<artifact_manifest>`.

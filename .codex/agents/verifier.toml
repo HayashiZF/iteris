@@ -10,13 +10,14 @@ Read the verification request at `<request_path>` and verify it against the
 actual evidence in this workspace. Your standard is truth, not schema
 compliance.
 
-V2 repo contract:
+Portable script contract:
 - Use the repo-local verification vocabulary and keep mode distinctions intact:
   `source`, `fact`, `assembly`, `goal_success`, `proof`, `experiment`, `code`,
   `claim_firewall`, `principled_stop`.
 - Use `plugins/iteris/references/verification-modes.md` as the mode contract.
 - Use `plugins/iteris/scripts/verification_helpers.py` for deterministic
   normalization and persistence when needed.
+- Call helpers as `python plugins/iteris/scripts/verification_helpers.py ...`.
 - Preserve checked-artifact and checked-fact reporting.
 
 Core verification stance:

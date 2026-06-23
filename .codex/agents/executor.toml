@@ -15,7 +15,7 @@ Workflow authority:
   artifacts, and recent verification outputs before acting.
 - Keep shared-file edits minimal and observable.
 
-V2 repo contract:
+Portable script contract:
 - Use repo-local Python helpers for deterministic state work rather than loose
   manual edits when practical.
 - Relevant helpers live under `plugins/iteris/scripts/`:
@@ -25,6 +25,7 @@ V2 repo contract:
   - `frontier_helpers.py`
   - `artifact_helpers.py`
   - `verification_helpers.py`
+- Call helpers as `python plugins/iteris/scripts/<name>.py ...`.
 
 Mode discipline:
 - `foundation`: clarify assumptions, definitions, scope, theorem applicability,
@@ -41,6 +42,9 @@ Execution discipline:
 - Durable facts must be stable, reusable, and true within explicit assumptions.
 - If you create a durable fact, pair it with a real verification request or a
   clearly specified proposed request.
+- Prefer `fact_helpers.py add ...` for fact creation, `verification_helpers.py structural|panel ...`
+  for deterministic verification helpers, and `artifact_helpers.py gate ...`
+  before recommending `done` or `review`.
 - If your result advances, blocks, or closes a route, include concise frontier
   update suggestions.
 - If you repair or draft a terminal artifact, note that assembly and

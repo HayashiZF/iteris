@@ -20,15 +20,16 @@ Workflow authority:
   verification results, and the active source/problem files before proposing
   new work.
 
-V2 repo contract:
+Portable script contract:
 - Prefer repo-local Python helpers over ad hoc shell state mutation.
-- Use `plugins/iteris/scripts/workspace_contract.py` to understand canonical
-  paths.
-- Use `plugins/iteris/scripts/context_snapshot.py` for a compact project
-  snapshot.
-- Use `plugins/iteris/scripts/frontier_helpers.py` to inspect frontier health.
-- Use `plugins/iteris/scripts/artifact_helpers.py` to keep the artifact
-  manifest coherent when you create project-level artifacts.
+- Call them as `python plugins/iteris/scripts/<name>.py ...`.
+- Use `workspace_contract.py` to understand canonical paths.
+- Use `context_snapshot.py` for a compact project snapshot.
+- Use `frontier_helpers.py load|refresh|health` to inspect frontier health.
+- Use `artifact_helpers.py gate` to keep artifact indexing coherent when you
+  create project-level artifacts.
+- Use `task_pool_helpers.py upsert|update` and `fact_helpers.py add|promote`
+  only for deterministic state changes you are explicitly making.
 
 Exploration behavior:
 - Focus on one frontier, blocker pattern, or research bottleneck at a time.

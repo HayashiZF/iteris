@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 
 try:
     from ._runtime import ensure_repo_imports
@@ -19,36 +18,18 @@ except ImportError:  # pragma: no cover - direct script loading in tests
 
 ensure_repo_imports()
 
-from iteris.frontier import frontier_health, load_frontier_index, refresh_frontier_from_project
-
-
-def load(project_root: str | Path) -> dict[str, Any]:
-    return load_frontier_index(Path(project_root))
-
-
-def refresh(project_root: str | Path) -> dict[str, Any]:
-    return refresh_frontier_from_project(Path(project_root))
-
-
-def health(project_root: str | Path) -> dict[str, Any]:
-    return frontier_health(Path(project_root))
+from iteris.generalize_analyze import validate_analysis_file
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="cmd", required=True)
-    for name in ("load", "refresh", "health"):
-        p = sub.add_parser(name)
-        p.add_argument("project_root")
+    p_validate = sub.add_parser("validate-analysis")
+    p_validate.add_argument("analysis_json")
     args = parser.parse_args(argv)
-    if args.cmd == "load":
-        payload = load(args.project_root)
-    elif args.cmd == "refresh":
-        payload = refresh(args.project_root)
-    else:
-        payload = health(args.project_root)
+    payload = validate_analysis_file(Path(args.analysis_json))
     print(json.dumps(payload, indent=2, ensure_ascii=False))
-    return 0
+    return 0 if payload.get("ok") else 1
 
 
 if __name__ == "__main__":  # pragma: no cover

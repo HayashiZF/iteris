@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import json
 from pathlib import Path
 
 try:
@@ -76,3 +78,71 @@ def rebuild_index(project_root: str | Path) -> int:
 
 def validate(project_root: str | Path, *, rebuild: bool = False) -> dict:
     return validate_project_facts(Path(project_root), rebuild=rebuild)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_add = sub.add_parser("add")
+    p_add.add_argument("project_root")
+    p_add.add_argument("--fact-id", required=True)
+    p_add.add_argument("--source-task", required=True)
+    p_add.add_argument("--claim-summary", required=True)
+    p_add.add_argument("--statement", required=True)
+    p_add.add_argument("--status", default="submitted")
+    p_add.add_argument("--fact-type", default="claim")
+    p_add.add_argument("--predecessor", action="append", default=[])
+    p_add.add_argument("--notes", default="")
+    p_add.add_argument("--verification")
+    p_add.add_argument("--claim-policy", default="stable_claim")
+    p_add.add_argument("--review-level", default="none")
+
+    p_promote = sub.add_parser("promote")
+    p_promote.add_argument("project_root")
+    p_promote.add_argument("--fact-id", required=True)
+    p_promote.add_argument("--verification", required=True)
+    p_promote.add_argument("--status", default="verified")
+    p_promote.add_argument("--review-level", default="verified")
+
+    p_rebuild = sub.add_parser("rebuild-index")
+    p_rebuild.add_argument("project_root")
+
+    p_validate = sub.add_parser("validate")
+    p_validate.add_argument("project_root")
+    p_validate.add_argument("--rebuild", action="store_true")
+
+    args = parser.parse_args(argv)
+    if args.cmd == "add":
+        payload = {"path": add_fact(
+            args.project_root,
+            fact_id=args.fact_id,
+            source_task=args.source_task,
+            claim_summary=args.claim_summary,
+            statement=args.statement,
+            status=args.status,
+            fact_type=args.fact_type,
+            predecessors=args.predecessor,
+            notes=args.notes,
+            verification=args.verification,
+            claim_policy=args.claim_policy,
+            review_level=args.review_level,
+        )}
+    elif args.cmd == "promote":
+        payload = {"path": promote_fact(
+            args.project_root,
+            fact_id=args.fact_id,
+            verification=args.verification,
+            status=args.status,
+            review_level=args.review_level,
+        )}
+    elif args.cmd == "rebuild-index":
+        payload = {"count": rebuild_index(args.project_root)}
+    else:
+        payload = validate(args.project_root, rebuild=args.rebuild)
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

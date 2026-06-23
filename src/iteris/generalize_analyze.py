@@ -295,7 +295,7 @@ Authoritative inputs to read first:
 - The durable facts: `memory/facts/` (especially `status: verified` facts) and
   `memory/facts/FACT_INDEX.jsonl`.
 - `STATUS.md`, `ROADMAP.md`, and the source problem under `sources/`.
-- Run `iteris tool context . --json` for an overview.
+- Run `python plugins/iteris/scripts/context_snapshot.py .` for an overview.
 
 Method (do these in order):
 

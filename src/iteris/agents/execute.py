@@ -54,18 +54,12 @@ def build_execute_prompt(request: dict[str, Any], task: dict[str, Any]) -> str:
     mode_workflow = f"\n{EXPERIMENT_WORKFLOW}" if mode == "experiment" else ""
     task_text = json.dumps(task, indent=2, ensure_ascii=False)
     recommended_artifacts = json.dumps(request.get("recommended_artifacts") or {}, indent=2, ensure_ascii=False)
-    iteris_cli = request.get("iteris_cli") or "iteris"
     default_prompt = f"""You are the Iteris Execute Subagent.
 
 You are a background execution tool invoked by the main goal agent. The main
 agent may continue working in parallel, so keep shared-file edits minimal and
 make your progress observable through logs and output files. Do not declare the
 project goal complete. Your job is to advance exactly one TASK_POOL item.
-
-Running iteris tool commands:
-- This prompt uses `iteris tool ...` commands. Your shell may not have `iteris`
-  on PATH (login shells reset PATH). If `iteris` is not found, use the absolute
-  path `{iteris_cli}` in its place (e.g. `{iteris_cli} tool artifact gate . --json`).
 
 Execution mode: `{mode}`
 Mode guidance:
@@ -86,7 +80,7 @@ Canonical artifact workspace:
 - If the task has explicit `expected_outputs`, honor them. When those outputs are legacy route-check summaries, write the compatibility summary there and keep mode-specific proof/experiment/code files in the canonical workspace.
 - Update the artifact manifest with every project-level artifact you create and with the fact ids or verification request ids you submit. The runtime appends coarse records to the global artifact index; do not manually duplicate large content in the index.
 - Avoid file explosion: keep each task/run in this workspace, and put multiple related files below it instead of creating many flat files under `artifacts/proofs`, `artifacts/experiments`, `artifacts/code`, or `artifacts/route_checks`.
-- You may create artifact files directly with normal shell/editor tools. Before recommending the task as `done` or `review`, run `iteris tool artifact gate . --json` when practical and fix unindexed scripts or missing manifest fields.
+- You may create artifact files directly with normal shell/editor tools. Before recommending the task as `done` or `review`, run `python plugins/iteris/scripts/artifact_helpers.py gate .` when practical and fix unindexed scripts or missing manifest fields.
 
 Recommended files for this mode:
 ```json
@@ -107,9 +101,9 @@ Shared-state discipline:
   state, route status, plans, priorities, literature impressions, or what has
   been tried so far as facts; put those in scratch memory, TASK_POOL,
   FRONTIER_INDEX, or artifacts.
-- If you create a durable fact, use `iteris tool memory add-fact` only for this
-  kind of stable claim, then run real verification with
-  `iteris tool verify submit . --backend agent --mode fact ...`.
+- If you create a durable fact, use `python plugins/iteris/scripts/fact_helpers.py add ...`
+  for this kind of stable claim, and use `python plugins/iteris/scripts/verification_helpers.py structural ...`
+  or a real agent verification workflow when appropriate.
 - Real verification-agent runs usually take several minutes. After submitting
   verification, do not poll status or logs during the first 180 seconds unless
   the submit command has already returned or clearly failed; if it is still
@@ -203,7 +197,6 @@ schedule into the next TASK_POOL frontier.
                     "run_id": request["run_id"],
                     "output_markdown": request["output_markdown"],
                     "output_json": request["output_json"],
-                    "iteris_cli": iteris_cli,
                 },
                 indent=2,
                 ensure_ascii=False,

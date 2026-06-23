@@ -221,7 +221,13 @@ def build_agent_prompt(*, request_id: str, request_path: Path, output_path: Path
             curated,
             title="Runtime Request Context",
             sections={
-                "Verification Request": f"request_id: {request_id}\nrequest_path: `{request_path}`\noutput_path: `{output_path}`",
+                "Verification Request": (
+                    f"request_id: {request_id}\n"
+                    f"request_path: `{request_path}`\n"
+                    f"output_path: `{output_path}`\n"
+                    "Use `python plugins/iteris/scripts/verification_helpers.py normalize-agent ...` "
+                    "only for deterministic normalization/persistence when needed."
+                ),
             },
         )
     return f"""You are the Iteris Verification Agent.

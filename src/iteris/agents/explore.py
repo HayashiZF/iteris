@@ -13,7 +13,6 @@ from iteris.agents.runtime import create_agent_run
 def build_explore_prompt(request: dict[str, Any]) -> str:
     focus = request.get("focus") or "the active project frontier"
     recommended_artifacts = json.dumps(request.get("recommended_artifacts") or {}, indent=2, ensure_ascii=False)
-    iteris_cli = request.get("iteris_cli") or "iteris"
     default_prompt = f"""You are the Iteris Explore Subagent.
 
 You are a background tool invoked by the main goal agent. The main agent may
@@ -21,20 +20,13 @@ continue working in parallel, so do not wait for interactive input and do not
 treat your own completion as project completion. Preserve all useful state in
 the output files below so the main agent can inspect your progress later.
 
-Running iteris tool commands:
-- This prompt uses `iteris tool ...` commands. Your shell may not have `iteris`
-  on PATH (login shells reset PATH). If `iteris` is not found, use the absolute
-  path `{iteris_cli}` in its place (e.g. `{iteris_cli} tool context . --json`).
-
 Project workflow:
 - Start by reading `PROJECT.md`, `STATUS.md`, `ROADMAP.md`, `memory/facts/FRONTIER_INDEX.json`, `tasks/TASK_POOL.json`,
-  and `iteris tool context . --json`.
+  and `python plugins/iteris/scripts/context_snapshot.py .`.
 - Treat `TASK_POOL.json` and `FRONTIER_INDEX.json` as the current route state;
   legacy `tasks/task-*.json` files are historical unless mirrored in the pool.
 - Use memory and references before making claims:
-  `iteris tool memory search . --query ... --json`,
-  and, only for a concrete evidence gap, `iteris tool theorem search . --query ... --json`
-  or `iteris tool theorem fetch . --arxiv-id ... --json`.
+  read `memory/facts/`, `references/`, `verification/results/`, and the context snapshot first.
 - For checkpoint/frontier audits, stay inside project files unless you find a
   specific gap that requires external evidence.
 - For audits, prefer targeted reads; avoid full terminal artifacts unless you
@@ -76,7 +68,7 @@ Canonical artifact workspace:
 - Keep raw prompts/logs/status under `{request["run_id"]}`'s agent-run directory.
 - Use the workspace only for project-level exploratory reports or candidate-route indexes that the main agent should review later; keep throwaway notes inside the agent-run output files.
 - Avoid file explosion: group related project-level files in this workspace instead of creating many flat files directly under `artifacts/route_checks`.
-- You may create artifact files directly with normal shell/editor tools. If you create project-level scripts or reports, run `iteris tool artifact gate . --json` when practical and fix unindexed scripts or missing manifest fields.
+- You may create artifact files directly with normal shell/editor tools. If you create project-level scripts or reports, run `python plugins/iteris/scripts/artifact_helpers.py gate .` when practical and fix unindexed scripts or missing manifest fields.
 
 Recommended files:
 ```json
@@ -158,7 +150,6 @@ goal-success verification.
         title="Runtime Request Context",
         sections={
             "Focus": focus,
-            "Iteris CLI Fallback": f"If `iteris` is not on PATH, use `{iteris_cli}`.",
             "Artifact Workspace": json.dumps(
                 {
                     "artifact_workspace": request["artifact_workspace"],
