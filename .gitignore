@@ -30,3 +30,13 @@ artifacts/
 *.out
 *.toc
 docs/monitor-test-document.pdf
+
+tests/
+src/
+scripts/
+tasks/
+.agents/
+
+install.sh
+pyproject.toml
+.github/

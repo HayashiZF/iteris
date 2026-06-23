@@ -1,4 +1,4 @@
 interface:
   display_name: "Iteris Math"
-  short_description: "Run the portable Iteris mathematical research loop on a repo-local workspace."
-  default_prompt: "Use $iteris-math to run the Iteris mathematical research loop on this workspace with the portable plugin helpers and subagents."
+  short_description: "Run the portable Iteris operator/runtime loop on a repo-local mathematical workspace."
+  default_prompt: "Use $iteris-math to supervise this Iteris-style workspace through repo-local state, portable helper scripts, and contracted subagents."
