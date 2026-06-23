@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iteris Reporter"
+  short_description: "Summarize verified progress, blockers, and next actions."
+  default_prompt: "Use $reporter to turn current Iteris repo state into a concise evidence-linked report or handoff."

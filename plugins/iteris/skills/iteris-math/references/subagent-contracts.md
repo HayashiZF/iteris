@@ -5,9 +5,9 @@ The master skill should orchestrate these roles:
 - `frontier-explorer`: propose non-obvious routes and frontier/task suggestions
 - `task-executor`: advance exactly one `TASK_POOL.json` item
 - `claim-verifier`: adversarially verify facts, proofs, assemblies, or principled stops
-- frontier curator: consolidate route health and blocker patterns
-- generalization analyst: map verified results into portable future directions
-- reporter: summarize verified progress, active work, blockers, and next actions
+- `frontier-curator`: consolidate route health and blocker patterns
+- `generalization-analyst`: map verified results into portable future directions
+- `reporter`: summarize verified progress, active work, blockers, and next actions
 
 Expected orchestration pattern:
 

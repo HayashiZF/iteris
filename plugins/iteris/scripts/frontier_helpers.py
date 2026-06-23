@@ -3,35 +3,62 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
-try:
-    from ._runtime import ensure_repo_imports
-except ImportError:  # pragma: no cover - direct script loading in tests
-    import importlib.util
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-    _RUNTIME_PATH = Path(__file__).with_name("_runtime.py")
-    _SPEC = importlib.util.spec_from_file_location("iteris_v2_runtime", _RUNTIME_PATH)
-    _MODULE = importlib.util.module_from_spec(_SPEC)
-    assert _SPEC is not None and _SPEC.loader is not None
-    _SPEC.loader.exec_module(_MODULE)
-    ensure_repo_imports = _MODULE.ensure_repo_imports
+from _common import now_iso, read_json, resolve_root, write_json
+from task_pool_helpers import load as load_task_pool
 
-ensure_repo_imports()
 
-from iteris.frontier import frontier_health, load_frontier_index, refresh_frontier_from_project
+def _frontier_path(root: Path) -> Path:
+    return root / "memory" / "facts" / "FRONTIER_INDEX.json"
 
 
 def load(project_root: str | Path) -> dict[str, Any]:
-    return load_frontier_index(Path(project_root))
+    root = resolve_root(project_root)
+    payload = read_json(_frontier_path(root), default={})
+    return payload if isinstance(payload, dict) else {}
 
 
 def refresh(project_root: str | Path) -> dict[str, Any]:
-    return refresh_frontier_from_project(Path(project_root))
+    root = resolve_root(project_root)
+    frontier = load(root)
+    frontier.setdefault("schema_version", "iteris.frontier_index.v0")
+    frontier.setdefault("active_frontiers", [])
+    frontier["updated_at"] = now_iso()
+    write_json(_frontier_path(root), frontier)
+    return frontier
 
 
 def health(project_root: str | Path) -> dict[str, Any]:
-    return frontier_health(Path(project_root))
+    root = resolve_root(project_root)
+    frontier = load(root)
+    pool = load_task_pool(root)
+    tasks = [task for task in pool.get("tasks", []) if isinstance(task, dict)]
+    active = frontier.get("active_frontiers", []) or []
+    blocked = [task for task in tasks if task.get("status") == "blocked"]
+    ready = [task for task in tasks if task.get("status") == "ready"]
+    review = [task for task in tasks if task.get("status") == "review"]
+    explore = bool(not active or (len(blocked) >= 3 and not ready))
+    focus = ""
+    if active and isinstance(active[0], dict):
+        focus = str(active[0].get("title") or active[0].get("summary") or "")
+    elif blocked:
+        focus = str(blocked[0].get("objective") or blocked[0].get("task_id") or "")
+    return {
+        "ok": True,
+        "explore_recommended": explore,
+        "recommended_focus": focus,
+        "active_frontier_count": len(active),
+        "blocked_task_count": len(blocked),
+        "ready_task_count": len(ready),
+        "review_task_count": len(review),
+        "reason": "explore recommended by portable frontier heuristic" if explore else "no frontier exploration trigger",
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

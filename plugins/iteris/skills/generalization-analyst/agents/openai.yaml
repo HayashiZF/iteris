@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iteris Generalization Analyst"
+  short_description: "Turn a verified result into strong reusable future directions."
+  default_prompt: "Use $generalization-analyst to analyze a verified Iteris result and emit schema-faithful generalization directions."

@@ -3,43 +3,117 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
-try:
-    from ._runtime import ensure_repo_imports
-except ImportError:  # pragma: no cover - direct script loading in tests
-    import importlib.util
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-    _RUNTIME_PATH = Path(__file__).with_name("_runtime.py")
-    _SPEC = importlib.util.spec_from_file_location("iteris_v2_runtime", _RUNTIME_PATH)
-    _MODULE = importlib.util.module_from_spec(_SPEC)
-    assert _SPEC is not None and _SPEC.loader is not None
-    _SPEC.loader.exec_module(_MODULE)
-    ensure_repo_imports = _MODULE.ensure_repo_imports
+from _common import infer_project_id, now_iso, read_json, resolve_root, write_json
 
-ensure_repo_imports()
 
-from iteris.tasks import ensure_task_pool, load_task_pool, select_ready_tasks, update_pool_task, upsert_pool_task
+def _pool_path(root: Path) -> Path:
+    return root / "tasks" / "TASK_POOL.json"
+
+
+def _default_pool(root: Path) -> dict[str, Any]:
+    return {
+        "schema_version": "iteris.task_pool.v0",
+        "project_id": infer_project_id(root),
+        "updated_at": now_iso(),
+        "active_frontier": "",
+        "tasks": [],
+    }
 
 
 def load(project_root: str | Path) -> dict[str, Any]:
-    return load_task_pool(Path(project_root))
+    root = resolve_root(project_root)
+    payload = read_json(_pool_path(root), default=None)
+    return payload if isinstance(payload, dict) else _default_pool(root)
 
 
 def ensure(project_root: str | Path) -> dict[str, Any]:
-    return ensure_task_pool(Path(project_root))
+    root = resolve_root(project_root)
+    path = _pool_path(root)
+    if path.exists():
+        return load(root)
+    payload = _default_pool(root)
+    write_json(path, payload)
+    return payload
+
+
+def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
+    out = dict(task)
+    out.setdefault("priority", 0)
+    out.setdefault("dependencies", [])
+    out.setdefault("inputs", [])
+    out.setdefault("expected_outputs", [])
+    out.setdefault("notes", [])
+    out.setdefault("status", "ready")
+    return out
 
 
 def select_ready(project_root: str | Path, *, limit: int = 5, mode: str | None = None) -> list[dict[str, Any]]:
-    return select_ready_tasks(Path(project_root), limit=limit, mode=mode)
+    tasks = [task for task in load(project_root).get("tasks", []) if isinstance(task, dict)]
+    ready = [task for task in tasks if task.get("status") == "ready" and (mode is None or task.get("mode") == mode)]
+    ready.sort(key=lambda task: (-int(task.get("priority") or 0), str(task.get("task_id") or "")))
+    return ready[:limit]
 
 
 def upsert(project_root: str | Path, **kwargs: Any) -> dict[str, Any]:
-    return upsert_pool_task(Path(project_root), **kwargs)
+    root = resolve_root(project_root)
+    pool = ensure(root)
+    task_id = str(kwargs["task_id"])
+    tasks = [task for task in pool.get("tasks", []) if isinstance(task, dict)]
+    for task in tasks:
+        if task.get("task_id") == task_id:
+            task.update({k: v for k, v in kwargs.items() if v is not None})
+            task["updated_at"] = now_iso()
+            pool["updated_at"] = now_iso()
+            write_json(_pool_path(root), pool)
+            return _normalize_task(task)
+    task = _normalize_task(
+        {
+            "task_id": task_id,
+            "mode": kwargs.get("mode"),
+            "objective": kwargs.get("objective"),
+            "status": kwargs.get("status", "ready"),
+            "priority": kwargs.get("priority", 0),
+            "dependencies": kwargs.get("dependencies") or [],
+            "inputs": kwargs.get("inputs") or [],
+            "expected_outputs": kwargs.get("expected_outputs") or [],
+            "assigned_agent_run": kwargs.get("assigned_agent_run"),
+            "notes": kwargs.get("notes") or [],
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        }
+    )
+    tasks.append(task)
+    pool["tasks"] = tasks
+    pool["updated_at"] = now_iso()
+    write_json(_pool_path(root), pool)
+    return task
 
 
 def update(project_root: str | Path, task_id: str, **updates: Any) -> dict[str, Any]:
-    return update_pool_task(Path(project_root), task_id, **updates)
+    root = resolve_root(project_root)
+    pool = ensure(root)
+    tasks = [task for task in pool.get("tasks", []) if isinstance(task, dict)]
+    for task in tasks:
+        if task.get("task_id") != task_id:
+            continue
+        append_notes = updates.pop("append_notes", None) or []
+        task.update({k: v for k, v in updates.items() if v is not None})
+        if append_notes:
+            notes = list(task.get("notes") or [])
+            notes.extend(str(item) for item in append_notes)
+            task["notes"] = notes
+        task["updated_at"] = now_iso()
+        pool["updated_at"] = now_iso()
+        write_json(_pool_path(root), pool)
+        return _normalize_task(task)
+    raise KeyError(task_id)
 
 
 def main(argv: list[str] | None = None) -> int:

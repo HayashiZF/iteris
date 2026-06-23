@@ -39,3 +39,7 @@ tasks/
 install.sh
 pyproject.toml
 .github/
+AGENTS.md
+doc/
+docs/
+.iteris/

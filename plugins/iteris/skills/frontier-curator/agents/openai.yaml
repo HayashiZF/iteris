@@ -1,0 +1,4 @@
+interface:
+  display_name: "Iteris Frontier Curator"
+  short_description: "Curate route health, blockers, and precise frontier updates."
+  default_prompt: "Use $frontier-curator to reassess the active frontier and propose precise route and task-pool curation updates."

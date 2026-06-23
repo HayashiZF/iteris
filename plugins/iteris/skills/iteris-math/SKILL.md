@@ -5,7 +5,7 @@ description: Portable master skill for Iteris-style mathematical operator/runtim
 
 # Iteris Math
 
-Use this skill as the top-level operator/runtime layer for an Iteris-style mathematical workspace when the workflow should be driven from repo files and bundled scripts rather than the installed `iteris` package.
+Use this skill as the canonical top-level operator/runtime layer for an Iteris-style mathematical workspace when the workflow should be driven from repo files, plugin-owned skills, and standalone bundled scripts rather than the installed `iteris` package.
 
 Start with:
 
@@ -32,8 +32,8 @@ Core runtime loop:
    `harvest_review`, `resolve_messages`, `explore_frontier`, `execute_task`,
    `verify_claim`, `report_state`, or `idle`.
 4. Launch the appropriate contracted subagent:
-   `frontier-explorer`, `task-executor`, `claim-verifier`, frontier curation,
-   generalization analysis, or reporting.
+   `frontier-explorer`, `task-executor`, `claim-verifier`, `frontier-curator`,
+   `generalization-analyst`, or `reporter`.
 5. Keep durable state changes auditable through task, frontier, fact, artifact,
    message, and verification files.
 6. Do not treat a terminal artifact as complete until it has passed both
@@ -54,7 +54,7 @@ Read these references when needed:
 - `references/verification-modes.md`
 - `references/migration-from-iteris-v1.md`
 
-Use these bundled scripts:
+Canonical helper workflow:
 
 - `scripts/workspace_state.py` for compact repo-state snapshots
 - `scripts/task_pool.py` for task-pool reads and updates
@@ -63,7 +63,18 @@ Use these bundled scripts:
 - `scripts/artifacts_state.py` for artifact workspace and manifest bookkeeping
 - `scripts/verification_state.py` for verification request/result summaries
 - `scripts/operator_loop.py` for next-action selection and orchestration hints
+- `../scripts/workspace_contract.py` for canonical path discovery
+- `../scripts/context_snapshot.py` for subagent-ready compact context
+- `../scripts/task_pool_helpers.py`, `../scripts/frontier_helpers.py`,
+  `../scripts/fact_helpers.py`, `../scripts/artifact_helpers.py`,
+  `../scripts/verification_helpers.py`, and `../scripts/generalize_helpers.py`
+  for deterministic standalone repo-state operations used by the subagents and
+  the compatibility bridge in `src/iteris`
 
-Treat subagent-facing helper commands as a separate plugin surface. In the repo-local plugin,
-subagents may call helper scripts under `plugins/iteris/scripts/`, but this master skill should
-stay focused on portable state inspection, loop control, and orchestration policy.
+Canonical orchestration rules:
+
+- Treat plugin skills under `plugins/iteris/skills/` as the single prompt and role contract source.
+- Use `frontier-curator` when route naming or blocker consolidation is the main task, rather than forcing exploration or execution.
+- Use `reporter` when a human-facing handoff, review bundle, or progress summary is the best next action.
+- Use `generalization-analyst` only from verified results or verified partials with explicit future-direction value.
+- Keep `src/iteris` CLI surfaces compatible, but treat them as adapters onto this plugin contract rather than a separate runtime authority.

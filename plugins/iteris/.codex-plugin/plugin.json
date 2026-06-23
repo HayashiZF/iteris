@@ -17,9 +17,9 @@
       "Interactive"
     ],
     "defaultPrompt": [
-      "Run the Iteris operator/runtime loop on this repo using the portable plugin workflow.",
-      "Explore the active frontier and propose non-obvious next routes.",
-      "Verify a fact, proof, or terminal artifact against the Iteris contract."
+      "Use $iteris-math to run the canonical portable Iteris operator/runtime loop on this repo.",
+      "Use the plugin-owned subagents to explore, execute, curate, generalize, report, and verify against repo-local state.",
+      "Rely on the standalone Python helpers under plugins/iteris/scripts for deterministic workflow state operations."
     ]
   }
 }

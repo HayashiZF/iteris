@@ -3,40 +3,31 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
-try:
-    from ._runtime import ensure_repo_imports
-except ImportError:  # pragma: no cover - direct script loading in tests
-    import importlib.util
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-    _RUNTIME_PATH = Path(__file__).with_name("_runtime.py")
-    _SPEC = importlib.util.spec_from_file_location("iteris_v2_runtime", _RUNTIME_PATH)
-    _MODULE = importlib.util.module_from_spec(_SPEC)
-    assert _SPEC is not None and _SPEC.loader is not None
-    _SPEC.loader.exec_module(_MODULE)
-    ensure_repo_imports = _MODULE.ensure_repo_imports
-
-ensure_repo_imports()
-
-from iteris.artifacts import artifact_layout_summary
-from iteris.frontier import frontier_health, frontier_summary, load_frontier_index
-from iteris.memory.facts import validate_project_facts
-from iteris.project import read_json, source_file
-from iteris.tasks import load_task_pool
-from iteris.verification.local import latest_results
+from _common import read_json, read_jsonl, read_text, rel_or_abs, resolve_root
+from fact_helpers import validate as validate_facts
+from frontier_helpers import health as frontier_health, load as load_frontier
+from task_pool_helpers import load as load_task_pool
 
 
 def snapshot(project_root: str | Path, *, query: str | None = None, limit: int = 5) -> dict[str, Any]:
-    root = Path(project_root).resolve()
-    source = source_file(root)
+    root = resolve_root(project_root)
     task_pool = load_task_pool(root)
-    frontier = load_frontier_index(root)
-    facts = validate_project_facts(root, rebuild=False)
-    verifications = latest_results(root)[-limit:]
+    frontier = load_frontier(root)
+    facts = validate_facts(root, rebuild=False)
+    verifications = read_jsonl(root / "verification" / "VERIFICATION_INDEX.jsonl")[-limit:]
+    artifacts = read_jsonl(root / "artifacts" / "ARTIFACT_INDEX.jsonl")[-limit:]
+    source_file = _first_existing(root, ["sources/problem.md", "sources/problem.txt", "PROJECT.md"])
     return {
         "project_path": str(root),
-        "source_file": str(source.relative_to(root)) if source else None,
+        "workflow_authority": "Use tasks/TASK_POOL.json and memory/facts/FRONTIER_INDEX.json as the route state authority.",
+        "source_file": rel_or_abs(source_file, root) if source_file else None,
         "status_text": _read_short(root / "STATUS.md"),
         "roadmap_text": _read_short(root / "ROADMAP.md"),
         "fact_count": facts["count"],
@@ -44,10 +35,10 @@ def snapshot(project_root: str | Path, *, query: str | None = None, limit: int =
         "facts_ok": facts["ok"],
         "task_pool": task_pool,
         "frontier_index": frontier,
-        "frontier_summary": frontier_summary(frontier),
+        "frontier_summary": _frontier_summary(frontier),
         "frontier_health": frontier_health(root),
         "verification_results": verifications,
-        "artifact_layout": artifact_layout_summary(),
+        "recent_artifacts": artifacts,
         "config": read_json(root / ".iteris" / "config.json", default={}),
         "search_query": query,
         "search_results": [],
@@ -72,6 +63,22 @@ def _read_short(path: Path, limit: int = 2000) -> str:
     if not path.exists():
         return ""
     return path.read_text(encoding="utf-8", errors="replace")[:limit]
+
+
+def _first_existing(root: Path, candidates: list[str]) -> Path | None:
+    for candidate in candidates:
+        path = root / candidate
+        if path.exists():
+            return path
+    return None
+
+
+def _frontier_summary(frontier: dict[str, Any]) -> dict[str, Any]:
+    active = [item for item in frontier.get("active_frontiers", []) if isinstance(item, dict)]
+    return {
+        "active_count": len(active),
+        "titles": [str(item.get("title") or item.get("summary") or "") for item in active[:5]],
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

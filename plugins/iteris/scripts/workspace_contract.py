@@ -4,25 +4,18 @@ import json
 import sys
 from pathlib import Path
 
-try:
-    from ._runtime import ensure_repo_imports
-except ImportError:  # pragma: no cover - direct script loading in tests
-    import importlib.util
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-    _RUNTIME_PATH = Path(__file__).with_name("_runtime.py")
-    _SPEC = importlib.util.spec_from_file_location("iteris_v2_runtime", _RUNTIME_PATH)
-    _MODULE = importlib.util.module_from_spec(_SPEC)
-    assert _SPEC is not None and _SPEC.loader is not None
-    _SPEC.loader.exec_module(_MODULE)
-    ensure_repo_imports = _MODULE.ensure_repo_imports
-
-ensure_repo_imports()
+from _common import resolve_root
 
 
 def build_workspace_contract(project_root: str | Path) -> dict[str, str]:
-    root = Path(project_root).resolve()
+    root = resolve_root(project_root)
     return {
         "project_root": str(root),
+        "project_id": root.name,
         "sources_dir": str(root / "sources"),
         "references_dir": str(root / "references"),
         "results_dir": str(root / "results"),
@@ -34,6 +27,8 @@ def build_workspace_contract(project_root: str | Path) -> dict[str, str]:
         "artifact_index_path": str(root / "artifacts" / "ARTIFACT_INDEX.jsonl"),
         "verification_requests_dir": str(root / "verification" / "requests"),
         "verification_results_dir": str(root / "verification" / "results"),
+        "messages_inbox_path": str(root / "messages" / "inbox.jsonl"),
+        "messages_ack_path": str(root / "messages" / "ack.jsonl"),
     }
 
 
