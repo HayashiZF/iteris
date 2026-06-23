@@ -36,7 +36,6 @@ src/
 scripts/
 tasks/
 
-install.sh
 pyproject.toml
 .github/
 AGENTS.md
