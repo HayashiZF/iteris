@@ -17,9 +17,12 @@ from iteris.codex_logs import (
 )
 from iteris.executors import (
     EXECUTOR_CLAUDE,
+    HEADLESS_TRANSPORT_SDK,
+    build_sdk_headless_command,
     build_claude_headless_command,
     build_codex_headless_command,
     headless_home_env,
+    resolve_headless_transport,
     resolve_agent_model,
     resolve_executor,
 )
@@ -65,8 +68,9 @@ def verify_agent(
     if mode not in ALLOWED_MODES:
         raise ValueError(f"invalid verification mode: {mode}")
     executor_name = resolve_verification_executor(executor)
+    headless_transport = resolve_headless_transport(executor_name, executable=executable)
     agent_bin = executable or shutil.which(executor_name) or executor_name
-    if shutil.which(agent_bin) is None and not Path(agent_bin).exists():
+    if headless_transport != HEADLESS_TRANSPORT_SDK and shutil.which(agent_bin) is None and not Path(agent_bin).exists():
         raise RuntimeError(f"{executor_name} executable is not installed; real verification cannot run")
 
     fact_ids = fact_ids or []
@@ -92,6 +96,8 @@ def verify_agent(
         "codex_events": str((run_dir / CODEX_EVENTS_FILENAME).relative_to(project_root)),
         "codex_stderr": str((run_dir / CODEX_STDERR_FILENAME).relative_to(project_root)),
         "codex_log_manifest": str((run_dir / CODEX_LOG_MANIFEST_FILENAME).relative_to(project_root)),
+        "headless_transport": headless_transport,
+        "headless_executable": agent_bin,
     }
     write_json(project_root / "verification" / "requests" / f"{request_id}.json", request)
 
@@ -101,20 +107,36 @@ def verify_agent(
     (run_dir / "prompt.md").write_text(prompt, encoding="utf-8")
 
     if executor_name == EXECUTOR_CLAUDE:
-        cmd = build_claude_headless_command(
-            project_root=project_root,
-            executable=agent_bin,
-            model=resolve_agent_model(executor_name, model, kind="verification"),
+        agent_model = resolve_agent_model(executor_name, model, kind="verification")
+        cmd = (
+            build_claude_headless_command(
+                project_root=project_root,
+                executable=agent_bin,
+                model=agent_model,
+            )
+            if headless_transport != HEADLESS_TRANSPORT_SDK
+            else build_sdk_headless_command()
         )
         render_fn = render_claude_events
     else:
-        cmd = build_codex_headless_command(
-            project_root=project_root,
-            executable=agent_bin,
-            model=model or DEFAULT_MODEL,
-            reasoning_effort=reasoning_effort or DEFAULT_REASONING_EFFORT,
+        agent_model = model or DEFAULT_MODEL
+        cmd = (
+            build_codex_headless_command(
+                project_root=project_root,
+                executable=agent_bin,
+                model=agent_model,
+                reasoning_effort=reasoning_effort or DEFAULT_REASONING_EFFORT,
+            )
+            if headless_transport != HEADLESS_TRANSPORT_SDK
+            else build_sdk_headless_command()
         )
         render_fn = render_codex_events
+    request["headless_model"] = agent_model
+    request["headless_reasoning_effort"] = (
+        reasoning_effort or DEFAULT_REASONING_EFFORT
+    ) if executor_name != EXECUTOR_CLAUDE else None
+    request["codex_command"] = cmd
+    write_json(run_dir / "request.json", request)
     log_manifest = run_codex_exec_json(
         project_root=project_root,
         run_dir=run_dir,
@@ -131,9 +153,15 @@ def verify_agent(
             "ITERIS_VERIFICATION_REQUEST_ID": request_id,
             "ITERIS_PROJECT_ROOT": str(project_root),
             "ITERIS_EXECUTOR": executor_name,
+            "ITERIS_SDK_EXECUTOR": executor_name,
+            "ITERIS_SDK_MODEL": str(request.get("headless_model") or ""),
+            "ITERIS_SDK_REASONING_EFFORT": str(request.get("headless_reasoning_effort") or ""),
+            "ITERIS_SDK_PROMPT_PATH": str((run_dir / "prompt.md").resolve()),
+            "ITERIS_SDK_EVENTS_PATH": str((run_dir / CODEX_EVENTS_FILENAME).resolve()),
             **headless_home_env(executor_name),
         },
         timeout_seconds=timeout_seconds if timeout_seconds is not None else DEFAULT_TIMEOUT_SECONDS,
+        stdin_prompt=headless_transport != HEADLESS_TRANSPORT_SDK,
     )
 
     log_path = run_dir / "codex.log"

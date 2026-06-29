@@ -7,11 +7,15 @@ import pytest
 
 from iteris.commands.goal import build_codex_command, build_shell_command
 from iteris.executors import (
+    HEADLESS_TRANSPORT_CLI,
+    HEADLESS_TRANSPORT_SDK,
+    build_sdk_headless_command,
     build_claude_command,
     claude_state_file,
     ensure_claude_project_trusted,
     main_agent_home_env,
     prepare_claude_home,
+    resolve_headless_transport,
     resolve_executor,
 )
 
@@ -49,6 +53,17 @@ def test_build_codex_command_accepts_model(tmp_path):
     assert cmd[:5] == ["codex", "--yolo", "--no-alt-screen", "-m", "gpt-5.5"]
 
 
+def test_headless_transport_defaults_to_sdk_and_explicit_binary_uses_cli():
+    assert resolve_headless_transport("codex") == HEADLESS_TRANSPORT_SDK
+    assert resolve_headless_transport("claude") == HEADLESS_TRANSPORT_SDK
+    assert resolve_headless_transport("codex", executable="/tmp/fake-codex") == HEADLESS_TRANSPORT_CLI
+
+
+def test_build_sdk_headless_command_uses_python_module():
+    cmd = build_sdk_headless_command()
+    assert cmd[:3] == [cmd[0], "-m", "iteris.sdk_exec"]
+
+
 def test_main_agent_home_env_per_executor(tmp_path):
     assert main_agent_home_env("codex", tmp_path) == {"CODEX_HOME": str(tmp_path)}
     claude_env = main_agent_home_env("claude", tmp_path)
@@ -72,7 +87,8 @@ def test_build_shell_command_env_updates(tmp_path):
     shell_cmd = build_shell_command(root, cmd, env_updates={"CLAUDE_CONFIG_DIR": str(tmp_path / "home"), "IS_SANDBOX": "1"})
     assert "exec env" in shell_cmd
     assert "IS_SANDBOX=1" in shell_cmd
-    assert f"CLAUDE_CONFIG_DIR={tmp_path / 'home'}" in shell_cmd
+    assert "CLAUDE_CONFIG_DIR=" in shell_cmd
+    assert str(tmp_path / "home") in shell_cmd
     assert "claude --dangerously-skip-permissions" in shell_cmd
 
 

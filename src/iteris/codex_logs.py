@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -67,6 +68,7 @@ def run_codex_exec_json(
     executor: str = "codex",
     render_fn: Callable[..., dict[str, Any]] | None = None,
     log_adapter: str | None = None,
+    stdin_prompt: bool = True,
 ) -> dict[str, Any]:
     """Run a headless agent CLI, preserving raw JSONL events and a text log.
 
@@ -97,6 +99,7 @@ def run_codex_exec_json(
     error: str | None = None
 
     env = build_child_env(env_updates)
+    cmd = _prepare_command_for_platform(cmd)
     run_dir.mkdir(parents=True, exist_ok=True)
     header_lines = [
         f"started_at: {started_at}",
@@ -117,7 +120,7 @@ def run_codex_exec_json(
             cmd,
             cwd=root,
             env=env,
-            stdin=subprocess.PIPE,
+            stdin=subprocess.PIPE if stdin_prompt else subprocess.DEVNULL,
             stdout=events_handle,
             stderr=stderr_handle,
             text=True,
@@ -125,7 +128,7 @@ def run_codex_exec_json(
         )
         if on_spawn is not None:
             try:
-                pgid = os.getpgid(proc.pid)
+                pgid = os.getpgid(proc.pid) if hasattr(os, "getpgid") else proc.pid
             except (ProcessLookupError, OSError):
                 pgid = proc.pid
             try:
@@ -133,7 +136,7 @@ def run_codex_exec_json(
             except Exception:
                 pass
         try:
-            proc.communicate(input=prompt, timeout=timeout_seconds)
+            proc.communicate(input=prompt if stdin_prompt else None, timeout=timeout_seconds)
             returncode = proc.returncode
         except subprocess.TimeoutExpired:
             timed_out = True
@@ -195,6 +198,25 @@ def _append_stderr_to_text_log(stderr_path: Path, text_log_path: Path) -> None:
         out.write(_truncate(stderr_text))
         if not stderr_text.endswith("\n"):
             out.write("\n")
+
+
+def _prepare_command_for_platform(command: list[str]) -> list[str]:
+    if os.name != "nt" or not command:
+        return command
+    candidate = Path(command[0])
+    if not candidate.exists() or candidate.suffix.lower() in {".exe", ".bat", ".cmd", ".com", ".ps1"}:
+        return command
+    try:
+        first_line = candidate.read_text(encoding="utf-8", errors="replace").splitlines()[0]
+    except (OSError, IndexError):
+        return command
+    if not first_line.startswith("#!"):
+        return command
+    if "sh" in first_line or "bash" in first_line:
+        shell = shutil.which("sh") or shutil.which("bash")
+        if shell:
+            return [shell, str(candidate), *command[1:]]
+    return command
 
 
 def render_codex_events(events_path: Path, text_log_path: Path, *, header_lines: list[str] | None = None) -> dict[str, Any]:

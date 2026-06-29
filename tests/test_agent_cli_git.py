@@ -963,6 +963,7 @@ PY
     assert (project / manifest["created_artifacts"][0]).exists()
     run_dir = project / result["agent_run_dir"]
     request = json.loads((run_dir / "request.json").read_text(encoding="utf-8"))
+    assert request["headless_transport"] == "cli"
     assert "--json" in request["codex_command"]
     assert (run_dir / "codex.events.jsonl").exists()
     assert (run_dir / "codex.stderr.log").exists()
@@ -1047,6 +1048,8 @@ PY
     assert (project / result["codex_events"]).exists()
     assert (project / result["codex_stderr"]).exists()
     assert (project / result["codex_log_manifest"]).exists()
+    request = json.loads((project / result["request_path"]).read_text(encoding="utf-8"))
+    assert request["headless_transport"] == "cli"
     manifest = json.loads((project / result["artifact_manifest"]).read_text(encoding="utf-8"))
     assert manifest["agent_status"] == "completed"
     assert manifest["agent_output_summary"] == "Finished before timeout."

@@ -24,7 +24,8 @@ def test_agent_prompt_and_command_are_codex_exec(tmp_path):
         model="gpt-5.5",
         reasoning_effort="xhigh",
     )
-    assert cmd[:5] == ["codex", "exec", "--json", "-C", "/tmp/project"]
+    assert cmd[:4] == ["codex", "exec", "--json", "-C"]
+    assert cmd[4].replace("\\", "/") == "/tmp/project"
     assert "--dangerously-bypass-approvals-and-sandbox" in cmd
     assert cmd[-1] == "-"
     assert prompt not in cmd

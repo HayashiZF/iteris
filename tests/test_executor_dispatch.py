@@ -15,6 +15,9 @@ from pathlib import Path
 import pytest
 
 from iteris.executors import (
+    HEADLESS_TRANSPORT_CLI,
+    HEADLESS_TRANSPORT_SDK,
+    build_sdk_headless_command,
     build_claude_headless_command,
     build_codex_headless_command,
     headless_home_env,
@@ -37,7 +40,8 @@ def test_codex_headless_command_reads_stdin_with_model_and_effort():
     cmd = build_codex_headless_command(
         project_root=Path("/tmp/p"), executable="codex", model="gpt-5.5", reasoning_effort="high"
     )
-    assert cmd[:5] == ["codex", "exec", "--json", "-C", "/tmp/p"]
+    assert cmd[:4] == ["codex", "exec", "--json", "-C"]
+    assert cmd[4].replace("\\", "/") == "/tmp/p"
     assert cmd[-1] == "-"  # prompt on stdin
     assert "--dangerously-bypass-approvals-and-sandbox" in cmd
     assert "model_reasoning_effort=high" in cmd
@@ -76,6 +80,10 @@ def test_resolve_agent_model_defaults():
     assert resolve_agent_model("claude", None, env={"ITERIS_CLAUDE_VERIFICATION_MODEL": "cv"}, kind="verification") == "cv"
 
 
+def test_sdk_headless_command_is_python_module():
+    assert build_sdk_headless_command()[1:] == ["-m", "iteris.sdk_exec"]
+
+
 def test_resolve_verification_executor_is_independent():
     # explicit > ITERIS_VERIFICATION_EXECUTOR > ITERIS_EXECUTOR > codex
     assert resolve_verification_executor(None, env={}) == "codex"
@@ -102,8 +110,8 @@ def test_create_agent_run_claude_dry_run_records_executor(tmp_path):
     assert summary["executor"] == "claude"
     request = json.loads((project / summary["agent_run_dir"] / "request.json").read_text(encoding="utf-8"))
     assert request["executor"] == "claude"
-    cmd = request["codex_command"]  # legacy key holds the active executor's command
-    assert Path(cmd[0]).name == "claude" and "-p" in cmd and "stream-json" in cmd
+    assert request["headless_transport"] == HEADLESS_TRANSPORT_SDK
+    assert request["codex_command"][1:] == ["-m", "iteris.sdk_exec"]
 
 
 def test_create_agent_run_inherits_executor_from_env(tmp_path, monkeypatch):
@@ -172,6 +180,7 @@ def test_execute_agent_claude_end_to_end(tmp_path):
     run_dir = project / result["agent_run_dir"]
     request = json.loads((run_dir / "request.json").read_text(encoding="utf-8"))
     assert request["executor"] == "claude"
+    assert request["headless_transport"] == HEADLESS_TRANSPORT_CLI
     assert Path(request["codex_command"][0]).name == "fake-claude"
     # Events are captured into the (executor-neutral-in-practice) codex.events file,
     # rendered through the claude adapter, and the manifest is self-describing.
@@ -300,7 +309,8 @@ def test_generalize_analyze_print_uses_claude_command(tmp_path):
     assert payload["mode"] == "print"
     # The launched agent CLI is claude, not codex (the .iteris/codex_home/ path
     # is intentionally shared by both executors, so don't assert on the path).
-    assert "claude --dangerously-skip-permissions" in payload["command"]
+    assert "claude" in payload["command"]
+    assert "--dangerously-skip-permissions" in payload["command"]
     assert "CLAUDE_CONFIG_DIR=" in payload["command"]
     assert " codex " not in payload["command"] and "codex exec" not in payload["command"]
 

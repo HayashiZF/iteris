@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -32,6 +33,7 @@ def test_doctor_json_reports_missing_run_dependencies(monkeypatch):
     hints = "\n".join(payload["hints"])
     assert "sudo apt-get update" in hints
     assert "ripgrep" in hints
+    assert "bundled Codex SDK runtime" in hints
     assert "npm install -g @openai/codex" in hints
 
 
@@ -87,7 +89,7 @@ def test_doctor_json_codex_hint_mentions_node_when_npm_missing(tmp_path, monkeyp
     assert payload["ready_for_foreground_run"] is False
     hints = "\n".join(payload["hints"])
     assert "nodejs npm" in hints
-    assert "Install Node/npm first" in hints
+    assert "interactive `iteris run` / `iteris monitor`" in hints
 
 
 def test_doctor_json_tmux_missing_still_allows_foreground_run(tmp_path, monkeypatch):
@@ -115,5 +117,6 @@ def test_doctor_json_tmux_missing_still_allows_foreground_run(tmp_path, monkeypa
 
 def test_install_script_has_valid_bash_syntax():
     script = Path(__file__).resolve().parents[1] / "install.sh"
-
-    subprocess.run(["bash", "-n", str(script)], check=True)
+    shell = shutil.which("sh") or shutil.which("bash")
+    assert shell, "POSIX shell is required for install.sh syntax validation"
+    subprocess.run([shell, "-n", str(script)], check=True)

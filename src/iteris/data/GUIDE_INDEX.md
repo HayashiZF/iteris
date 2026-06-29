@@ -11,10 +11,11 @@ Iteris is a goal-driven research agent workspace. A human usually starts with
 ## Setup flow
 
 1. `bash install.sh` then `iteris doctor`
-2. Install at least one agent CLI: **Codex** (`codex`) or **Claude Code** (`claude`)
-3. Run `codex` or `claude` once and complete login/authorization
-4. Optional: `export ITERIS_EXECUTOR=claude` (default is codex)
-5. Start: `iteris monitor`
+2. Install Iteris Python dependencies; headless Codex and Claude agents now run via the bundled Python SDKs
+3. Install **Codex** (`codex`) or **Claude Code** (`claude`) only if you want interactive `iteris run` / `iteris monitor` sessions on that backend
+4. Run `codex` or `claude` once and complete login/authorization if you use the interactive CLI path
+5. Optional: `export ITERIS_EXECUTOR=claude` (default is codex)
+6. Start: `iteris monitor`
 
 ## Human entry points
 

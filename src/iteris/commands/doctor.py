@@ -50,9 +50,9 @@ def _package_manager() -> str | None:
 def _install_hint(binary: str, manager: str | None = None) -> str:
     manager = manager or _package_manager()
     if binary == "codex":
-        return "Install Node/npm first if needed, then install Codex CLI with `npm install -g @openai/codex` and run `codex` once to complete login/authorization."
+        return "Install Iteris Python dependencies so the bundled Codex SDK runtime is available for headless agents, and install the Codex CLI with `npm install -g @openai/codex` only if you want interactive `iteris run` / `iteris monitor` Codex sessions. Run `codex` once to complete login if you use the CLI path."
     if binary == "claude":
-        return "Install Node/npm first if needed, then install Claude Code with `npm install -g @anthropic-ai/claude-code` and run `claude` once to complete login. Only needed if you run Iteris with `--executor claude` / $ITERIS_EXECUTOR=claude."
+        return "Install Iteris Python dependencies so the Claude SDK is available for headless agents. Install Claude Code with `npm install -g @anthropic-ai/claude-code` only if you want interactive `iteris run` / `iteris monitor` Claude sessions. Only needed if you run Iteris with `--executor claude` / $ITERIS_EXECUTOR=claude."
     if binary == "rg":
         package = {
             "brew": "ripgrep",
@@ -133,9 +133,9 @@ def _check_environment() -> tuple[list[dict[str, str]], list[str], bool, bool]:
             elif binary == "tmux":
                 ready_for_default = False
 
-    # Executors: Iteris runs the /goal loop and headless agents on codex OR
-    # claude (selectable via --executor / $ITERIS_EXECUTOR). At least one must be
-    # installed; a missing one is only a warning so the other can still run.
+    # Executors: interactive /goal loops still need the CLI, while headless
+    # sub-agents/verifiers use the Python SDKs. Keep each CLI optional so a user
+    # can still run the other backend or a headless-only workflow.
     codex_path = _has("codex")
     claude_path = _has("claude")
     for name, path in (("codex", codex_path), ("claude", claude_path)):
@@ -154,7 +154,7 @@ def _check_environment() -> tuple[list[dict[str, str]], list[str], bool, bool]:
         {
             "name": "OPENAI_API_KEY",
             "status": "ok" if api_key else "skipped",
-            "detail": "set" if api_key else "not set; ok if Codex CLI login is configured (Claude Code does not use it)",
+            "detail": "set" if api_key else "not set; ok if Codex SDK/CLI login is configured (Claude does not use it)",
         }
     )
 

@@ -25,9 +25,12 @@ from iteris.codex_logs import (
 from iteris.events import record_event
 from iteris.executors import (
     EXECUTOR_CLAUDE,
+    HEADLESS_TRANSPORT_SDK,
+    build_sdk_headless_command,
     build_claude_headless_command,
     build_codex_headless_command,
     headless_home_env,
+    resolve_headless_transport,
     resolve_agent_model,
     resolve_executor,
 )
@@ -108,19 +111,31 @@ def create_agent_run(
     )
 
     if executor_name == EXECUTOR_CLAUDE:
+        headless_transport = resolve_headless_transport(executor_name, executable=executable)
         agent_bin = executable or shutil.which("claude") or "claude"
-        agent_command = build_claude_headless_command(
-            project_root=root,
-            executable=agent_bin,
-            model=resolve_agent_model(executor_name, model, kind="agent"),
+        agent_model = resolve_agent_model(executor_name, model, kind="agent")
+        agent_command = (
+            build_claude_headless_command(
+                project_root=root,
+                executable=agent_bin,
+                model=agent_model,
+            )
+            if headless_transport != HEADLESS_TRANSPORT_SDK
+            else build_sdk_headless_command()
         )
     else:
+        headless_transport = resolve_headless_transport(executor_name, executable=executable)
         agent_bin = executable or shutil.which("codex") or "codex"
-        agent_command = build_codex_headless_command(
-            project_root=root,
-            executable=agent_bin,
-            model=model or DEFAULT_MODEL,
-            reasoning_effort=reasoning_effort or DEFAULT_REASONING_EFFORT,
+        agent_model = model or DEFAULT_MODEL
+        agent_command = (
+            build_codex_headless_command(
+                project_root=root,
+                executable=agent_bin,
+                model=agent_model,
+                reasoning_effort=reasoning_effort or DEFAULT_REASONING_EFFORT,
+            )
+            if headless_transport != HEADLESS_TRANSPORT_SDK
+            else build_sdk_headless_command()
         )
     request = {
         "schema_version": "iteris.agent_run_request.v0",
@@ -145,6 +160,12 @@ def create_agent_run(
         "codex_log_manifest": str((run_dir / CODEX_LOG_MANIFEST_FILENAME).relative_to(root)),
         **artifact_request,
         "timeout_seconds": timeout_seconds if timeout_seconds is not None else DEFAULT_TIMEOUT_SECONDS,
+        "headless_transport": headless_transport,
+        "headless_executable": agent_bin,
+        "headless_model": agent_model,
+        "headless_reasoning_effort": (
+            reasoning_effort or DEFAULT_REASONING_EFFORT
+        ) if executor_name != EXECUTOR_CLAUDE else None,
         # Legacy key name predates multi-executor support; it holds the active
         # executor's headless command regardless of which CLI launched.
         "codex_command": agent_command,
@@ -204,16 +225,17 @@ def run_agent_exec(run_dir: Path) -> dict[str, Any]:
     cmd = [str(item) for item in request.get("codex_command") or []]
     if not cmd:
         raise RuntimeError("agent request has no executor command")
-    # No-op for claude (argv[1] is "-p"); only codex grows a "--json" flag here.
-    json_cmd = ensure_codex_exec_json(cmd)
-    if json_cmd != cmd:
-        request["codex_command"] = json_cmd
-        request.setdefault("codex_events", str((run_dir / CODEX_EVENTS_FILENAME).relative_to(root)))
-        request.setdefault("codex_stderr", str((run_dir / CODEX_STDERR_FILENAME).relative_to(root)))
-        request.setdefault("codex_log_manifest", str((run_dir / CODEX_LOG_MANIFEST_FILENAME).relative_to(root)))
-        write_json(run_dir / "request.json", request)
-        cmd = json_cmd
-    if shutil.which(cmd[0]) is None and not Path(cmd[0]).exists():
+    if request.get("headless_transport") != HEADLESS_TRANSPORT_SDK:
+        # No-op for claude (argv[1] is "-p"); only codex grows a "--json" flag here.
+        json_cmd = ensure_codex_exec_json(cmd)
+        if json_cmd != cmd:
+            request["codex_command"] = json_cmd
+            request.setdefault("codex_events", str((run_dir / CODEX_EVENTS_FILENAME).relative_to(root)))
+            request.setdefault("codex_stderr", str((run_dir / CODEX_STDERR_FILENAME).relative_to(root)))
+            request.setdefault("codex_log_manifest", str((run_dir / CODEX_LOG_MANIFEST_FILENAME).relative_to(root)))
+            write_json(run_dir / "request.json", request)
+            cmd = json_cmd
+    if request.get("headless_transport") != HEADLESS_TRANSPORT_SDK and shutil.which(cmd[0]) is None and not Path(cmd[0]).exists():
         write_status(run_dir, {"status": "failed", "error": f"{executor_name} executable is not installed", "updated_at": now_iso()})
         raise RuntimeError(f"{executor_name} executable is not installed; subagent cannot run")
 
@@ -238,9 +260,15 @@ def run_agent_exec(run_dir: Path) -> dict[str, Any]:
             "ITERIS_AGENT_RUN_ID": str(request.get("run_id") or run_dir.name),
             "ITERIS_PROJECT_ROOT": str(root),
             "ITERIS_EXECUTOR": executor_name,
+            "ITERIS_SDK_EXECUTOR": executor_name,
+            "ITERIS_SDK_MODEL": str(request.get("headless_model") or ""),
+            "ITERIS_SDK_REASONING_EFFORT": str(request.get("headless_reasoning_effort") or ""),
+            "ITERIS_SDK_PROMPT_PATH": str((run_dir / "prompt.md").resolve()),
+            "ITERIS_SDK_EVENTS_PATH": str((run_dir / CODEX_EVENTS_FILENAME).resolve()),
             **headless_home_env(executor_name),
         },
         timeout_seconds=int(request.get("timeout_seconds") or DEFAULT_TIMEOUT_SECONDS),
+        stdin_prompt=request.get("headless_transport") != HEADLESS_TRANSPORT_SDK,
         # Persist the executor process group while it runs so `iteris stop` and
         # `iteris recover` can reap the CLI/node subtree (a separate session
         # from this worker) instead of leaving it to burn budget after a stop.

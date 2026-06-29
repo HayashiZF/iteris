@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -65,6 +66,25 @@ def build_claude_command(
 
 
 DEFAULT_CODEX_MODEL = "gpt-5.5"
+
+HEADLESS_TRANSPORT_SDK = "sdk"
+HEADLESS_TRANSPORT_CLI = "cli"
+
+
+def resolve_headless_transport(executor: str, *, executable: str | None = None) -> str:
+    """Choose the transport for non-interactive runs.
+
+    By default Iteris uses the SDK-backed helper for headless Codex/Claude
+    invocations. Passing an explicit executable preserves the legacy CLI launch
+    path, which is still useful for tests and deliberate overrides.
+    """
+    del executor
+    return HEADLESS_TRANSPORT_CLI if executable else HEADLESS_TRANSPORT_SDK
+
+
+def build_sdk_headless_command() -> list[str]:
+    """Launcher command for the shared SDK-backed headless helper."""
+    return [sys.executable, "-m", "iteris.sdk_exec"]
 
 
 def build_codex_headless_command(
